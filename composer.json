@@ -2,6 +2,7 @@
     "name": "jetspydragon/nusoap",
     "description": "NuSOAP re-packaged for Packagist/Composer",
     "license": "LGPLv2",
+    "version": "0.9.6",
     "authors": [
         {
             "name": "Dietrich Ayala",
