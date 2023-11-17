@@ -1,29 +1,28 @@
 <?php
 
-
-
-
 /**
-*
-* [nu]soapclient higher level class for easy usage.
-*
-* usage:
-*
-* // instantiate client with server info
-* $soapclient = new nusoap_client( string path [ ,mixed wsdl] );
-*
-* // call method, get results
-* echo $soapclient->call( string methodname [ ,array parameters] );
-*
-* // bye bye client
-* unset($soapclient);
-*
-* @author   Dietrich Ayala <dietrich@ganx4.com>
-* @author   Scott Nichol <snichol@users.sourceforge.net>
-* @version  $Id: class.soapclient.php,v 1.69 2010/04/26 20:15:08 snichol Exp $
-* @access   public
-*/
-class nusoap_client extends nusoap_base  {
+ *
+ * [nu]soapclient higher level class for easy usage.
+ *
+ * usage:
+ *
+ * // instantiate client with server info
+ * $soapclient = new nusoap_client( string path [ ,mixed wsdl] );
+ *
+ * // call method, get results
+ * echo $soapclient->call( string methodname [ ,array parameters] );
+ *
+ * // bye bye client
+ * unset($soapclient);
+ *
+ * @author   Dietrich Ayala <dietrich@ganx4.com>
+ * @author   Scott Nichol <snichol@users.sourceforge.net>
+ * @version  $Id: class.soapclient.php,v 1.69 2010/04/26 20:15:08 snichol Exp $
+ * @access   public
+ */
+#[AllowDynamicProperties]
+class nusoap_client extends nusoap_base
+{
 
 	var $username = '';				// Username for HTTP authentication
 	var $password = '';				// Password for HTTP authentication
@@ -35,12 +34,12 @@ class nusoap_client extends nusoap_base  {
 	var $document = '';				// SOAP body response portion (incomplete namespace resolution) (text)
 	var $endpoint;
 	var $forceEndpoint = '';		// overrides WSDL endpoint
-    var $proxyhost = '';
-    var $proxyport = '';
+	var $proxyhost = '';
+	var $proxyport = '';
 	var $proxyusername = '';
 	var $proxypassword = '';
 	var $portName = '';				// port name to use in WSDL
-    var $xml_encoding = '';			// character set encoding of incoming (response) messages
+	var $xml_encoding = '';			// character set encoding of incoming (response) messages
 	var $http_encoding = false;
 	var $timeout = 0;				// HTTP connection timeout
 	var $response_timeout = 30;		// HTTP response timeout
@@ -51,7 +50,7 @@ class nusoap_client extends nusoap_base  {
 	var $response = '';				// HTTP response
 	var $responseData = '';			// SOAP payload of response
 	var $cookies = array();			// Cookies from response or for request
-    var $decode_utf8 = true;		// toggles whether the parser decodes element content w/ utf8_decode()
+	var $decode_utf8 = true;		// toggles whether the parser decodes element content w/ utf8_decode()
 	var $operations = array();		// WSDL operations, empty for WSDL initialization error
 	var $curl_options = array();	// User-specified cURL options
 	var $bindingType = '';			// WSDL operation binding type
@@ -82,20 +81,21 @@ class nusoap_client extends nusoap_base  {
 	var $faultdetail;
 
 	/**
-	* constructor
-	*
-	* @param    mixed $endpoint SOAP server or WSDL URL (string), or wsdl instance (object)
-	* @param    mixed $wsdl optional, set to 'wsdl' or true if using WSDL
-	* @param    string $proxyhost optional
-	* @param    string $proxyport optional
-	* @param	string $proxyusername optional
-	* @param	string $proxypassword optional
-	* @param	integer $timeout set the connection timeout
-	* @param	integer $response_timeout set the response timeout
-	* @param	string $portName optional portName in WSDL document
-	* @access   public
-	*/
-	function __construct($endpoint,$wsdl = false,$proxyhost = false,$proxyport = false,$proxyusername = false, $proxypassword = false, $timeout = 0, $response_timeout = 30, $portName = ''){
+	 * constructor
+	 *
+	 * @param    mixed $endpoint SOAP server or WSDL URL (string), or wsdl instance (object)
+	 * @param    mixed $wsdl optional, set to 'wsdl' or true if using WSDL
+	 * @param    string $proxyhost optional
+	 * @param    string $proxyport optional
+	 * @param	string $proxyusername optional
+	 * @param	string $proxypassword optional
+	 * @param	integer $timeout set the connection timeout
+	 * @param	integer $response_timeout set the response timeout
+	 * @param	string $portName optional portName in WSDL document
+	 * @access   public
+	 */
+	function __construct($endpoint, $wsdl = false, $proxyhost = false, $proxyport = false, $proxyusername = false, $proxypassword = false, $timeout = 0, $response_timeout = 30, $portName = '')
+	{
 		parent::__construct();
 		$this->endpoint = $endpoint;
 		$this->proxyhost = $proxyhost;
@@ -110,7 +110,7 @@ class nusoap_client extends nusoap_base  {
 		$this->appendDebug('endpoint=' . $this->varDump($endpoint));
 
 		// make values
-		if($wsdl){
+		if ($wsdl) {
 			if (is_object($endpoint) && (get_class($endpoint) == 'wsdl')) {
 				$this->wsdl = $endpoint;
 				$this->endpoint = $this->wsdl->wsdl;
@@ -130,31 +130,32 @@ class nusoap_client extends nusoap_base  {
 	}
 
 	/**
-	* calls method, returns PHP native type
-	*
-	* @param    string $operation SOAP server URL or path
-	* @param    mixed $params An array, associative or simple, of the parameters
-	*			              for the method call, or a string that is the XML
-	*			              for the call.  For rpc style, this call will
-	*			              wrap the XML in a tag named after the method, as
-	*			              well as the SOAP Envelope and Body.  For document
-	*			              style, this will only wrap with the Envelope and Body.
-	*			              IMPORTANT: when using an array with document style,
-	*			              in which case there
-	*                         is really one parameter, the root of the fragment
-	*                         used in the call, which encloses what programmers
-	*                         normally think of parameters.  A parameter array
-	*                         *must* include the wrapper.
-	* @param	string $namespace optional method namespace (WSDL can override)
-	* @param	string $soapAction optional SOAPAction value (WSDL can override)
-	* @param	mixed $headers optional string of XML with SOAP header content, or array of soapval objects for SOAP headers, or associative array
-	* @param	boolean $rpcParams optional (no longer used)
-	* @param	string	$style optional (rpc|document) the style to use when serializing parameters (WSDL can override)
-	* @param	string	$use optional (encoded|literal) the use when serializing parameters (WSDL can override)
-	* @return	mixed	response from SOAP call, normally an associative array mirroring the structure of the XML response, false for certain fatal errors
-	* @access   public
-	*/
-	function call($operation,$params=array(),$namespace='http://tempuri.org',$soapAction='',$headers=false,$rpcParams=null,$style='rpc',$use='encoded'){
+	 * calls method, returns PHP native type
+	 *
+	 * @param    string $operation SOAP server URL or path
+	 * @param    mixed $params An array, associative or simple, of the parameters
+	 *			              for the method call, or a string that is the XML
+	 *			              for the call.  For rpc style, this call will
+	 *			              wrap the XML in a tag named after the method, as
+	 *			              well as the SOAP Envelope and Body.  For document
+	 *			              style, this will only wrap with the Envelope and Body.
+	 *			              IMPORTANT: when using an array with document style,
+	 *			              in which case there
+	 *                         is really one parameter, the root of the fragment
+	 *                         used in the call, which encloses what programmers
+	 *                         normally think of parameters.  A parameter array
+	 *                         *must* include the wrapper.
+	 * @param	string $namespace optional method namespace (WSDL can override)
+	 * @param	string $soapAction optional SOAPAction value (WSDL can override)
+	 * @param	mixed $headers optional string of XML with SOAP header content, or array of soapval objects for SOAP headers, or associative array
+	 * @param	boolean $rpcParams optional (no longer used)
+	 * @param	string	$style optional (rpc|document) the style to use when serializing parameters (WSDL can override)
+	 * @param	string	$use optional (encoded|literal) the use when serializing parameters (WSDL can override)
+	 * @return	mixed	response from SOAP call, normally an associative array mirroring the structure of the XML response, false for certain fatal errors
+	 * @access   public
+	 */
+	function call($operation, $params = array(), $namespace = 'http://tempuri.org', $soapAction = '', $headers = false, $rpcParams = null, $style = 'rpc', $use = 'encoded')
+	{
 		$this->operation = $operation;
 		$this->fault = false;
 		$this->setError('');
@@ -164,7 +165,7 @@ class nusoap_client extends nusoap_base  {
 		$this->faultstring = '';
 		$this->faultcode = '';
 		$this->opData = array();
-		
+
 		$this->debug("call: operation=$operation, namespace=$namespace, soapAction=$soapAction, rpcParams=$rpcParams, style=$style, use=$use, endpointType=$this->endpointType");
 		$this->appendDebug('params=' . $this->varDump($params));
 		$this->appendDebug('headers=' . $this->varDump($headers));
@@ -177,7 +178,7 @@ class nusoap_client extends nusoap_base  {
 				return false;
 		}
 		// serialize parameters
-		if($this->endpointType == 'wsdl' && $opData = $this->getOperationData($operation)){
+		if ($this->endpointType == 'wsdl' && $opData = $this->getOperationData($operation)) {
 			// use WSDL for operation
 			$this->opData = $opData;
 			$this->debug("found operation");
@@ -185,7 +186,7 @@ class nusoap_client extends nusoap_base  {
 			if (isset($opData['soapAction'])) {
 				$soapAction = $opData['soapAction'];
 			}
-			if (! $this->forceEndpoint) {
+			if (!$this->forceEndpoint) {
 				$this->endpoint = $opData['endpoint'];
 			} else {
 				$this->endpoint = $this->forceEndpoint;
@@ -194,24 +195,24 @@ class nusoap_client extends nusoap_base  {
 			$style = $opData['style'];
 			$use = $opData['input']['use'];
 			// add ns to ns array
-			if($namespace != '' && !isset($this->wsdl->namespaces[$namespace])){
+			if ($namespace != '' && !isset($this->wsdl->namespaces[$namespace])) {
 				$nsPrefix = 'ns' . rand(1000, 9999);
 				$this->wsdl->namespaces[$nsPrefix] = $namespace;
 			}
-            $nsPrefix = $this->wsdl->getPrefixFromNamespace($namespace);
+			$nsPrefix = $this->wsdl->getPrefixFromNamespace($namespace);
 			// serialize payload
 			if (is_string($params)) {
 				$this->debug("serializing param string for WSDL operation $operation");
 				$payload = $params;
 			} elseif (is_array($params)) {
 				$this->debug("serializing param array for WSDL operation $operation");
-				$payload = $this->wsdl->serializeRPCParameters($operation,'input',$params,$this->bindingType);
+				$payload = $this->wsdl->serializeRPCParameters($operation, 'input', $params, $this->bindingType);
 			} else {
 				$this->debug('params must be array or string');
 				$this->setError('params must be array or string');
 				return false;
 			}
-            $usedNamespaces = $this->wsdl->usedNamespaces;
+			$usedNamespaces = $this->wsdl->usedNamespaces;
 			if (isset($opData['input']['encodingStyle'])) {
 				$encodingStyle = $opData['input']['encodingStyle'];
 			} else {
@@ -220,15 +221,15 @@ class nusoap_client extends nusoap_base  {
 			$this->appendDebug($this->wsdl->getDebug());
 			$this->wsdl->clearDebug();
 			if ($errstr = $this->wsdl->getError()) {
-				$this->debug('got wsdl error: '.$errstr);
-				$this->setError('wsdl error: '.$errstr);
+				$this->debug('got wsdl error: ' . $errstr);
+				$this->setError('wsdl error: ' . $errstr);
 				return false;
 			}
-		} elseif($this->endpointType == 'wsdl') {
+		} elseif ($this->endpointType == 'wsdl') {
 			// operation not in WSDL
 			$this->appendDebug($this->wsdl->getDebug());
 			$this->wsdl->clearDebug();
-			$this->setError('operation '.$operation.' not present in WSDL.');
+			$this->setError('operation ' . $operation . ' not present in WSDL.');
 			$this->debug("operation '$operation' not present in WSDL.");
 			return false;
 		} else {
@@ -242,8 +243,8 @@ class nusoap_client extends nusoap_base  {
 				$payload = $params;
 			} elseif (is_array($params)) {
 				$this->debug("serializing param array for operation $operation");
-				foreach($params as $k => $v){
-					$payload .= $this->serialize_val($v,$k,false,false,false,false,$use);
+				foreach ($params as $k => $v) {
+					$payload .= $this->serialize_val($v, $k, false, false, false, false, $use);
 				}
 			} else {
 				$this->debug('params must be array or string');
@@ -264,8 +265,8 @@ class nusoap_client extends nusoap_base  {
 				if ($namespace) {
 					// http://www.ws-i.org/Profiles/BasicProfile-1.1-2004-08-24.html R2735 says rpc/literal accessor elements should not be in a namespace
 					$payload = "<$nsPrefix:$operation xmlns:$nsPrefix=\"$namespace\">" .
-								$payload .
-								"</$nsPrefix:$operation>";
+						$payload .
+						"</$nsPrefix:$operation>";
 				} else {
 					$payload = "<$operation>" . $payload . "</$operation>";
 				}
@@ -273,35 +274,35 @@ class nusoap_client extends nusoap_base  {
 				$this->debug("wrapping RPC request with encoded method element");
 				if ($namespace) {
 					$payload = "<$nsPrefix:$operation xmlns:$nsPrefix=\"$namespace\">" .
-								$payload .
-								"</$nsPrefix:$operation>";
+						$payload .
+						"</$nsPrefix:$operation>";
 				} else {
 					$payload = "<$operation>" .
-								$payload .
-								"</$operation>";
+						$payload .
+						"</$operation>";
 				}
 			}
 		}
 		// serialize envelope
-		$soapmsg = $this->serializeEnvelope($payload,$this->requestHeaders,$usedNamespaces,$style,$use,$encodingStyle);
+		$soapmsg = $this->serializeEnvelope($payload, $this->requestHeaders, $usedNamespaces, $style, $use, $encodingStyle);
 		$this->debug("endpoint=$this->endpoint, soapAction=$soapAction, namespace=$namespace, style=$style, use=$use, encodingStyle=$encodingStyle");
 		$this->debug('SOAP message length=' . strlen($soapmsg) . ' contents (max 1000 bytes)=' . substr($soapmsg, 0, 1000));
 		// send
-		$return = $this->send($this->getHTTPBody($soapmsg),$soapAction,$this->timeout,$this->response_timeout);
-		if($errstr = $this->getError()){
-			$this->debug('Error: '.$errstr);
+		$return = $this->send($this->getHTTPBody($soapmsg), $soapAction, $this->timeout, $this->response_timeout);
+		if ($errstr = $this->getError()) {
+			$this->debug('Error: ' . $errstr);
 			return false;
 		} else {
 			$this->return = $return;
-			$this->debug('sent message successfully and got a(n) '.gettype($return));
-           	$this->appendDebug('return=' . $this->varDump($return));
-			
+			$this->debug('sent message successfully and got a(n) ' . gettype($return));
+			$this->appendDebug('return=' . $this->varDump($return));
+
 			// fault?
-			if(is_array($return) && isset($return['faultcode'])){
+			if (is_array($return) && isset($return['faultcode'])) {
 				$this->debug('got fault');
-				$this->setError($return['faultcode'].': '.$return['faultstring']);
+				$this->setError($return['faultcode'] . ': ' . $return['faultstring']);
 				$this->fault = true;
-				foreach($return as $k => $v){
+				foreach ($return as $k => $v) {
 					$this->$k = $v;
 					$this->debug("$k = $v<br>");
 				}
@@ -312,18 +313,18 @@ class nusoap_client extends nusoap_base  {
 				return $return;
 			} else {
 				// array of return values
-				if(is_array($return)){
+				if (is_array($return)) {
 					// multiple 'out' parameters, which we return wrapped up
 					// in the array
-					if(sizeof($return) > 1){
+					if (sizeof($return) > 1) {
 						return $return;
 					}
 					// single 'out' parameter (normally the return value)
 					$return = array_shift($return);
 					$this->debug('return shifted value: ');
 					$this->appendDebug($this->varDump($return));
-           			return $return;
-				// nothing returned (ie, echoVoid)
+					return $return;
+					// nothing returned (ie, echoVoid)
 				} else {
 					return "";
 				}
@@ -332,11 +333,12 @@ class nusoap_client extends nusoap_base  {
 	}
 
 	/**
-	* check WSDL passed as an instance or pulled from an endpoint
-	*
-	* @access   private
-	*/
-	function checkWSDL() {
+	 * check WSDL passed as an instance or pulled from an endpoint
+	 *
+	 * @access   private
+	 */
+	function checkWSDL()
+	{
 		$this->appendDebug($this->wsdl->getDebug());
 		$this->wsdl->clearDebug();
 		$this->debug('checkWSDL');
@@ -344,18 +346,18 @@ class nusoap_client extends nusoap_base  {
 		if ($errstr = $this->wsdl->getError()) {
 			$this->appendDebug($this->wsdl->getDebug());
 			$this->wsdl->clearDebug();
-			$this->debug('got wsdl error: '.$errstr);
-			$this->setError('wsdl error: '.$errstr);
+			$this->debug('got wsdl error: ' . $errstr);
+			$this->setError('wsdl error: ' . $errstr);
 		} elseif ($this->operations = $this->wsdl->getOperations($this->portName, 'soap')) {
 			$this->appendDebug($this->wsdl->getDebug());
 			$this->wsdl->clearDebug();
 			$this->bindingType = 'soap';
-			$this->debug('got '.count($this->operations).' operations from wsdl '.$this->wsdlFile.' for binding type '.$this->bindingType);
+			$this->debug('got ' . count($this->operations) . ' operations from wsdl ' . $this->wsdlFile . ' for binding type ' . $this->bindingType);
 		} elseif ($this->operations = $this->wsdl->getOperations($this->portName, 'soap12')) {
 			$this->appendDebug($this->wsdl->getDebug());
 			$this->wsdl->clearDebug();
 			$this->bindingType = 'soap12';
-			$this->debug('got '.count($this->operations).' operations from wsdl '.$this->wsdlFile.' for binding type '.$this->bindingType);
+			$this->debug('got ' . count($this->operations) . ' operations from wsdl ' . $this->wsdlFile . ' for binding type ' . $this->bindingType);
 			$this->debug('**************** WARNING: SOAP 1.2 BINDING *****************');
 		} else {
 			$this->appendDebug($this->wsdl->getDebug());
@@ -370,56 +372,59 @@ class nusoap_client extends nusoap_base  {
 	 *
 	 * @access	public
 	 */
-	function loadWSDL() {
-		$this->debug('instantiating wsdl class with doc: '.$this->wsdlFile);
-		$this->wsdl = new wsdl('',$this->proxyhost,$this->proxyport,$this->proxyusername,$this->proxypassword,$this->timeout,$this->response_timeout,$this->curl_options,$this->use_curl);
+	function loadWSDL()
+	{
+		$this->debug('instantiating wsdl class with doc: ' . $this->wsdlFile);
+		$this->wsdl = new wsdl('', $this->proxyhost, $this->proxyport, $this->proxyusername, $this->proxypassword, $this->timeout, $this->response_timeout, $this->curl_options, $this->use_curl);
 		$this->wsdl->setCredentials($this->username, $this->password, $this->authtype, $this->certRequest);
 		$this->wsdl->fetchWSDL($this->wsdlFile);
 		$this->checkWSDL();
 	}
 
 	/**
-	* get available data pertaining to an operation
-	*
-	* @param    string $operation operation name
-	* @return	array array of data pertaining to the operation
-	* @access   public
-	*/
-	function getOperationData($operation){
+	 * get available data pertaining to an operation
+	 *
+	 * @param    string $operation operation name
+	 * @return	array array of data pertaining to the operation
+	 * @access   public
+	 */
+	function getOperationData($operation)
+	{
 		if ($this->endpointType == 'wsdl' && is_null($this->wsdl)) {
 			$this->loadWSDL();
 			if ($this->getError())
 				return false;
 		}
-		if(isset($this->operations[$operation])){
+		if (isset($this->operations[$operation])) {
 			return $this->operations[$operation];
 		}
 		$this->debug("No data for operation: $operation");
 	}
 
-    /**
-    * send the SOAP message
-    *
-    * Note: if the operation has multiple return values
-    * the return value of this method will be an array
-    * of those values.
-    *
-	* @param    string $msg a SOAPx4 soapmsg object
-	* @param    string $soapaction SOAPAction value
-	* @param    integer $timeout set connection timeout in seconds
-	* @param	integer $response_timeout set response timeout in seconds
-	* @return	mixed native PHP types.
-	* @access   private
-	*/
-	function send($msg, $soapaction = '', $timeout=0, $response_timeout=30) {
+	/**
+	 * send the SOAP message
+	 *
+	 * Note: if the operation has multiple return values
+	 * the return value of this method will be an array
+	 * of those values.
+	 *
+	 * @param    string $msg a SOAPx4 soapmsg object
+	 * @param    string $soapaction SOAPAction value
+	 * @param    integer $timeout set connection timeout in seconds
+	 * @param	integer $response_timeout set response timeout in seconds
+	 * @return	mixed native PHP types.
+	 * @access   private
+	 */
+	function send($msg, $soapaction = '', $timeout = 0, $response_timeout = 30)
+	{
 		$this->checkCookies();
 		// detect transport
-		switch(true){
-			// http(s)
-			case preg_match('/^http/',$this->endpoint):
+		switch (true) {
+				// http(s)
+			case preg_match('/^http/', $this->endpoint):
 				$this->debug('transporting via HTTP');
-				if($this->persistentConnection == true && is_object($this->persistentConnection)){
-					$http =& $this->persistentConnection;
+				if ($this->persistentConnection == true && is_object($this->persistentConnection)) {
+					$http = &$this->persistentConnection;
 				} else {
 					$http = new soap_transport_http($this->endpoint, $this->curl_options, $this->use_curl);
 					if ($this->persistentConnection) {
@@ -428,27 +433,27 @@ class nusoap_client extends nusoap_base  {
 				}
 				$http->setContentType($this->getHTTPContentType(), $this->getHTTPContentTypeCharset());
 				$http->setSOAPAction($soapaction);
-				if($this->proxyhost && $this->proxyport){
-					$http->setProxy($this->proxyhost,$this->proxyport,$this->proxyusername,$this->proxypassword);
+				if ($this->proxyhost && $this->proxyport) {
+					$http->setProxy($this->proxyhost, $this->proxyport, $this->proxyusername, $this->proxypassword);
 				}
-                if($this->authtype != '') {
+				if ($this->authtype != '') {
 					$http->setCredentials($this->username, $this->password, $this->authtype, array(), $this->certRequest);
 				}
-				if($this->http_encoding != ''){
+				if ($this->http_encoding != '') {
 					$http->setEncoding($this->http_encoding);
 				}
-				$this->debug('sending message, length='.strlen($msg));
-				if(preg_match('/^http:/',$this->endpoint)){
-				//if(strpos($this->endpoint,'http:')){
-					$this->responseData = $http->send($msg,$timeout,$response_timeout,$this->cookies);
-				} elseif(preg_match('/^https/',$this->endpoint)){
-				//} elseif(strpos($this->endpoint,'https:')){
+				$this->debug('sending message, length=' . strlen($msg));
+				if (preg_match('/^http:/', $this->endpoint)) {
+					//if(strpos($this->endpoint,'http:')){
+					$this->responseData = $http->send($msg, $timeout, $response_timeout, $this->cookies);
+				} elseif (preg_match('/^https/', $this->endpoint)) {
+					//} elseif(strpos($this->endpoint,'https:')){
 					//if(phpversion() == '4.3.0-dev'){
-						//$response = $http->send($msg,$timeout,$response_timeout);
-                   		//$this->request = $http->outgoing_payload;
-						//$this->response = $http->incoming_payload;
+					//$response = $http->send($msg,$timeout,$response_timeout);
+					//$this->request = $http->outgoing_payload;
+					//$this->response = $http->incoming_payload;
 					//} else
-					$this->responseData = $http->sendHTTPS($msg,$timeout,$response_timeout,$this->cookies);
+					$this->responseData = $http->sendHTTPS($msg, $timeout, $response_timeout, $this->cookies);
 				} else {
 					$this->setError('no http/s in endpoint url');
 				}
@@ -464,39 +469,40 @@ class nusoap_client extends nusoap_base  {
 						$this->persistentConnection = $http;
 					}
 				}
-				
-				if($err = $http->getError()){
-					$this->setError('HTTP Error: '.$err);
+
+				if ($err = $http->getError()) {
+					$this->setError('HTTP Error: ' . $err);
 					return false;
-				} elseif($this->getError()){
+				} elseif ($this->getError()) {
 					return false;
 				} else {
-					$this->debug('got response, length='. strlen($this->responseData).' type='.$http->incoming_headers['content-type']);
+					$this->debug('got response, length=' . strlen($this->responseData) . ' type=' . $http->incoming_headers['content-type']);
 					return $this->parseResponse($http->incoming_headers, $this->responseData);
 				}
-			break;
+				break;
 			default:
 				$this->setError('no transport found, or selected transport is not yet supported!');
-			return false;
-			break;
+				return false;
+				break;
 		}
 	}
 
 	/**
-	* processes SOAP message returned from server
-	*
-	* @param	array	$headers	The HTTP headers
-	* @param	string	$data		unprocessed response data from server
-	* @return	mixed	value of the message, decoded into a PHP type
-	* @access   private
-	*/
-    function parseResponse($headers, $data) {
+	 * processes SOAP message returned from server
+	 *
+	 * @param	array	$headers	The HTTP headers
+	 * @param	string	$data		unprocessed response data from server
+	 * @return	mixed	value of the message, decoded into a PHP type
+	 * @access   private
+	 */
+	function parseResponse($headers, $data)
+	{
 		$this->debug('Entering parseResponse() for data of length ' . strlen($data) . ' headers:');
 		$this->appendDebug($this->varDump($headers));
-    	if (!isset($headers['content-type'])) {
+		if (!isset($headers['content-type'])) {
 			$this->setError('Response not of type text/xml (no content-type header)');
 			return false;
-    	}
+		}
 		if (!strstr($headers['content-type'], 'text/xml')) {
 			$this->setError('Response not of type text/xml: ' . $headers['content-type']);
 			return false;
@@ -504,7 +510,7 @@ class nusoap_client extends nusoap_base  {
 		if (strpos($headers['content-type'], '=')) {
 			$enc = str_replace('"', '', substr(strstr($headers["content-type"], '='), 1));
 			$this->debug('Got response encoding: ' . $enc);
-			if(preg_match('/^(ISO-8859-1|US-ASCII|UTF-8)$/i',$enc)){
+			if (preg_match('/^(ISO-8859-1|US-ASCII|UTF-8)$/i', $enc)) {
 				$this->xml_encoding = strtoupper($enc);
 			} else {
 				$this->xml_encoding = 'US-ASCII';
@@ -514,12 +520,12 @@ class nusoap_client extends nusoap_base  {
 			$this->xml_encoding = 'ISO-8859-1';
 		}
 		$this->debug('Use encoding: ' . $this->xml_encoding . ' when creating nusoap_parser');
-		$parser = new nusoap_parser($data,$this->xml_encoding,$this->operation,$this->decode_utf8);
+		$parser = new nusoap_parser($data, $this->xml_encoding, $this->operation, $this->decode_utf8);
 		// add parser debug data to our debug
 		$this->appendDebug($parser->getDebug());
 		// if parse errors
-		if($errstr = $parser->getError()){
-			$this->setError( $errstr);
+		if ($errstr = $parser->getError()) {
+			$this->setError($errstr);
 			// destroy the parser object
 			unset($parser);
 			return false;
@@ -530,81 +536,87 @@ class nusoap_client extends nusoap_base  {
 			$this->responseHeader = $parser->get_soapheader();
 			// get decoded message
 			$return = $parser->get_soapbody();
-            // add document for doclit support
-            $this->document = $parser->document;
+			// add document for doclit support
+			$this->document = $parser->document;
 			// destroy the parser object
 			unset($parser);
 			// return decode message
 			return $return;
 		}
-	 }
+	}
 
 	/**
-	* sets user-specified cURL options
-	*
-	* @param	mixed $option The cURL option (always integer?)
-	* @param	mixed $value The cURL option value
-	* @access   public
-	*/
-	function setCurlOption($option, $value) {
+	 * sets user-specified cURL options
+	 *
+	 * @param	mixed $option The cURL option (always integer?)
+	 * @param	mixed $value The cURL option value
+	 * @access   public
+	 */
+	function setCurlOption($option, $value)
+	{
 		$this->debug("setCurlOption option=$option, value=");
 		$this->appendDebug($this->varDump($value));
 		$this->curl_options[$option] = $value;
 	}
 
 	/**
-	* sets the SOAP endpoint, which can override WSDL
-	*
-	* @param	string $endpoint The endpoint URL to use, or empty string or false to prevent override
-	* @access   public
-	*/
-	function setEndpoint($endpoint) {
+	 * sets the SOAP endpoint, which can override WSDL
+	 *
+	 * @param	string $endpoint The endpoint URL to use, or empty string or false to prevent override
+	 * @access   public
+	 */
+	function setEndpoint($endpoint)
+	{
 		$this->debug("setEndpoint(\"$endpoint\")");
 		$this->forceEndpoint = $endpoint;
 	}
 
 	/**
-	* set the SOAP headers
-	*
-	* @param	mixed $headers String of XML with SOAP header content, or array of soapval objects for SOAP headers
-	* @access   public
-	*/
-	function setHeaders($headers){
+	 * set the SOAP headers
+	 *
+	 * @param	mixed $headers String of XML with SOAP header content, or array of soapval objects for SOAP headers
+	 * @access   public
+	 */
+	function setHeaders($headers)
+	{
 		$this->debug("setHeaders headers=");
 		$this->appendDebug($this->varDump($headers));
 		$this->requestHeaders = $headers;
 	}
 
 	/**
-	* get the SOAP response headers (namespace resolution incomplete)
-	*
-	* @return	string
-	* @access   public
-	*/
-	function getHeaders(){
+	 * get the SOAP response headers (namespace resolution incomplete)
+	 *
+	 * @return	string
+	 * @access   public
+	 */
+	function getHeaders()
+	{
 		return $this->responseHeaders;
 	}
 
 	/**
-	* get the SOAP response Header (parsed)
-	*
-	* @return	mixed
-	* @access   public
-	*/
-	function getHeader(){
+	 * get the SOAP response Header (parsed)
+	 *
+	 * @return	mixed
+	 * @access   public
+	 */
+	function getHeader()
+	{
 		return $this->responseHeader;
 	}
 
 	/**
-	* set proxy info here
-	*
-	* @param    string $proxyhost
-	* @param    string $proxyport
-	* @param	string $proxyusername
-	* @param	string $proxypassword
-	* @access   public
-	*/
-	function setHTTPProxy($proxyhost, $proxyport, $proxyusername = '', $proxypassword = '') {
+	 * set proxy info here
+	 *
+	 * @param    string $proxyhost
+	 * @param    string $proxyport
+	 * @param	string $proxyusername
+	 * @param	string $proxypassword
+	 * @access   public
+	 */
+	function setHTTPProxy($proxyhost, $proxyport, $proxyusername = '', $proxypassword = '')
+	{
 		$this->proxyhost = $proxyhost;
 		$this->proxyport = $proxyport;
 		$this->proxyusername = $proxyusername;
@@ -612,15 +624,16 @@ class nusoap_client extends nusoap_base  {
 	}
 
 	/**
-	* if authenticating, set user credentials here
-	*
-	* @param    string $username
-	* @param    string $password
-	* @param	string $authtype (basic|digest|certificate|ntlm)
-	* @param	array $certRequest (keys must be cainfofile (optional), sslcertfile, sslkeyfile, passphrase, verifypeer (optional), verifyhost (optional): see corresponding options in cURL docs)
-	* @access   public
-	*/
-	function setCredentials($username, $password, $authtype = 'basic', $certRequest = array()) {
+	 * if authenticating, set user credentials here
+	 *
+	 * @param    string $username
+	 * @param    string $password
+	 * @param	string $authtype (basic|digest|certificate|ntlm)
+	 * @param	array $certRequest (keys must be cainfofile (optional), sslcertfile, sslkeyfile, passphrase, verifypeer (optional), verifyhost (optional): see corresponding options in cURL docs)
+	 * @access   public
+	 */
+	function setCredentials($username, $password, $authtype = 'basic', $certRequest = array())
+	{
 		$this->debug("setCredentials username=$username authtype=$authtype certRequest=");
 		$this->appendDebug($this->varDump($certRequest));
 		$this->username = $username;
@@ -628,77 +641,83 @@ class nusoap_client extends nusoap_base  {
 		$this->authtype = $authtype;
 		$this->certRequest = $certRequest;
 	}
-	
+
 	/**
-	* use HTTP encoding
-	*
-	* @param    string $enc HTTP encoding
-	* @access   public
-	*/
-	function setHTTPEncoding($enc='gzip, deflate'){
+	 * use HTTP encoding
+	 *
+	 * @param    string $enc HTTP encoding
+	 * @access   public
+	 */
+	function setHTTPEncoding($enc = 'gzip, deflate')
+	{
 		$this->debug("setHTTPEncoding(\"$enc\")");
 		$this->http_encoding = $enc;
 	}
-	
+
 	/**
-	* Set whether to try to use cURL connections if possible
-	*
-	* @param	boolean $use Whether to try to use cURL
-	* @access   public
-	*/
-	function setUseCURL($use) {
+	 * Set whether to try to use cURL connections if possible
+	 *
+	 * @param	boolean $use Whether to try to use cURL
+	 * @access   public
+	 */
+	function setUseCURL($use)
+	{
 		$this->debug("setUseCURL($use)");
 		$this->use_curl = $use;
 	}
 
 	/**
-	* use HTTP persistent connections if possible
-	*
-	* @access   public
-	*/
-	function useHTTPPersistentConnection(){
+	 * use HTTP persistent connections if possible
+	 *
+	 * @access   public
+	 */
+	function useHTTPPersistentConnection()
+	{
 		$this->debug("useHTTPPersistentConnection");
 		$this->persistentConnection = true;
 	}
-	
+
 	/**
-	* gets the default RPC parameter setting.
-	* If true, default is that call params are like RPC even for document style.
-	* Each call() can override this value.
-	*
-	* This is no longer used.
-	*
-	* @return boolean
-	* @access public
-	* @deprecated
-	*/
-	function getDefaultRpcParams() {
+	 * gets the default RPC parameter setting.
+	 * If true, default is that call params are like RPC even for document style.
+	 * Each call() can override this value.
+	 *
+	 * This is no longer used.
+	 *
+	 * @return boolean
+	 * @access public
+	 * @deprecated
+	 */
+	function getDefaultRpcParams()
+	{
 		return $this->defaultRpcParams;
 	}
 
 	/**
-	* sets the default RPC parameter setting.
-	* If true, default is that call params are like RPC even for document style
-	* Each call() can override this value.
-	*
-	* This is no longer used.
-	*
-	* @param    boolean $rpcParams
-	* @access public
-	* @deprecated
-	*/
-	function setDefaultRpcParams($rpcParams) {
+	 * sets the default RPC parameter setting.
+	 * If true, default is that call params are like RPC even for document style
+	 * Each call() can override this value.
+	 *
+	 * This is no longer used.
+	 *
+	 * @param    boolean $rpcParams
+	 * @access public
+	 * @deprecated
+	 */
+	function setDefaultRpcParams($rpcParams)
+	{
 		$this->defaultRpcParams = $rpcParams;
 	}
-	
+
 	/**
-	* dynamically creates an instance of a proxy class,
-	* allowing user to directly call methods from wsdl
-	*
-	* @return   object soap_proxy object
-	* @access   public
-	*/
-	function getProxy() {
+	 * dynamically creates an instance of a proxy class,
+	 * allowing user to directly call methods from wsdl
+	 *
+	 * @return   object soap_proxy object
+	 * @access   public
+	 */
+	function getProxy()
+	{
 		$r = rand();
 		$evalStr = $this->_getProxyClassCode($r);
 		//$this->debug("proxy class: $evalStr");
@@ -709,7 +728,9 @@ class nusoap_client extends nusoap_base  {
 		// eval the class
 		eval($evalStr);
 		// instantiate proxy object
-		eval("\$proxy = new nusoap_proxy_$r('');");
+		//eval("\$proxy = new nusoap_proxy_$r('');");
+		$proxyClassname = "nusoap_proxy_$r";
+		$proxy = new $proxyClassname('');
 		// transfer current wsdl data to the proxy thereby avoiding parsing the wsdl twice
 		$proxy->endpointType = 'wsdl';
 		$proxy->wsdlFile = $this->wsdlFile;
@@ -741,12 +762,13 @@ class nusoap_client extends nusoap_base  {
 	}
 
 	/**
-	* dynamically creates proxy class code
-	*
-	* @return   string PHP/NuSOAP code for the proxy class
-	* @access   private
-	*/
-	function _getProxyClassCode($r) {
+	 * dynamically creates proxy class code
+	 *
+	 * @return   string PHP/NuSOAP code for the proxy class
+	 * @access   private
+	 */
+	function _getProxyClassCode($r)
+	{
 		$this->debug("in getProxy endpointType=$this->endpointType");
 		$this->appendDebug("wsdl=" . $this->varDump($this->wsdl));
 		if ($this->endpointType != 'wsdl') {
@@ -774,9 +796,9 @@ class nusoap_client extends nusoap_base  {
 						$paramArrayStr .= "'$name' => \$$name, ";
 						$paramCommentStr .= "$type \$$name, ";
 					}
-					$paramStr = substr($paramStr, 0, strlen($paramStr)-2);
-					$paramArrayStr = substr($paramArrayStr, 0, strlen($paramArrayStr)-2);
-					$paramCommentStr = substr($paramCommentStr, 0, strlen($paramCommentStr)-2);
+					$paramStr = substr($paramStr, 0, strlen($paramStr) - 2);
+					$paramArrayStr = substr($paramArrayStr, 0, strlen($paramArrayStr) - 2);
+					$paramCommentStr = substr($paramCommentStr, 0, strlen($paramCommentStr) - 2);
 				} else {
 					$paramStr = '';
 					$paramArrayStr = '';
@@ -786,63 +808,67 @@ class nusoap_client extends nusoap_base  {
 				$evalStr .= "// $paramCommentStr
 	function " . str_replace('.', '__', $operation) . "($paramStr) {
 		\$params = array($paramArrayStr);
-		return \$this->call('$operation', \$params, '".$opData['namespace']."', '".(isset($opData['soapAction']) ? $opData['soapAction'] : '')."');
+		return \$this->call('$operation', \$params, '" . $opData['namespace'] . "', '" . (isset($opData['soapAction']) ? $opData['soapAction'] : '') . "');
 	}
 	";
 				unset($paramStr);
 				unset($paramCommentStr);
 			}
 		}
-		$evalStr = 'class nusoap_proxy_'.$r.' extends nusoap_client {
-	'.$evalStr.'
+		$evalStr = 'class nusoap_proxy_' . $r . ' extends nusoap_client {
+	' . $evalStr . '
 }';
 		return $evalStr;
 	}
 
 	/**
-	* dynamically creates proxy class code
-	*
-	* @return   string PHP/NuSOAP code for the proxy class
-	* @access   public
-	*/
-	function getProxyClassCode() {
+	 * dynamically creates proxy class code
+	 *
+	 * @return   string PHP/NuSOAP code for the proxy class
+	 * @access   public
+	 */
+	function getProxyClassCode()
+	{
 		$r = rand();
 		return $this->_getProxyClassCode($r);
 	}
 
 	/**
-	* gets the HTTP body for the current request.
-	*
-	* @param string $soapmsg The SOAP payload
-	* @return string The HTTP body, which includes the SOAP payload
-	* @access private
-	*/
-	function getHTTPBody($soapmsg) {
+	 * gets the HTTP body for the current request.
+	 *
+	 * @param string $soapmsg The SOAP payload
+	 * @return string The HTTP body, which includes the SOAP payload
+	 * @access private
+	 */
+	function getHTTPBody($soapmsg)
+	{
 		return $soapmsg;
 	}
-	
+
 	/**
-	* gets the HTTP content type for the current request.
-	*
-	* Note: getHTTPBody must be called before this.
-	*
-	* @return string the HTTP content type for the current request.
-	* @access private
-	*/
-	function getHTTPContentType() {
+	 * gets the HTTP content type for the current request.
+	 *
+	 * Note: getHTTPBody must be called before this.
+	 *
+	 * @return string the HTTP content type for the current request.
+	 * @access private
+	 */
+	function getHTTPContentType()
+	{
 		return 'text/xml';
 	}
-	
+
 	/**
-	* gets the HTTP content type charset for the current request.
-	* returns false for non-text content types.
-	*
-	* Note: getHTTPBody must be called before this.
-	*
-	* @return string the HTTP content type charset for the current request.
-	* @access private
-	*/
-	function getHTTPContentTypeCharset() {
+	 * gets the HTTP content type charset for the current request.
+	 * returns false for non-text content types.
+	 *
+	 * Note: getHTTPBody must be called before this.
+	 *
+	 * @return string the HTTP content type charset for the current request.
+	 * @access private
+	 */
+	function getHTTPContentTypeCharset()
+	{
 		return $this->soap_defencoding;
 	}
 
@@ -852,10 +878,11 @@ class nusoap_client extends nusoap_base  {
     * @return   always returns true
     * @access   public
     */
-    function decodeUTF8($bool){
+	function decodeUTF8($bool)
+	{
 		$this->decode_utf8 = $bool;
 		return true;
-    }
+	}
 
 	/**
 	 * adds a new Cookie into $this->cookies array
@@ -865,7 +892,8 @@ class nusoap_client extends nusoap_base  {
 	 * @return	boolean if cookie-set was successful returns true, else false
 	 * @access	public
 	 */
-	function setCookie($name, $value) {
+	function setCookie($name, $value)
+	{
 		if (strlen($name) == 0) {
 			return false;
 		}
@@ -879,7 +907,8 @@ class nusoap_client extends nusoap_base  {
 	 * @return   array with all internal cookies
 	 * @access   public
 	 */
-	function getCookies() {
+	function getCookies()
+	{
 		return $this->cookies;
 	}
 
@@ -889,7 +918,8 @@ class nusoap_client extends nusoap_base  {
 	 * @return   boolean always return true
 	 * @access   private
 	 */
-	function checkCookies() {
+	function checkCookies()
+	{
 		if (sizeof($this->cookies) == 0) {
 			return true;
 		}
@@ -897,11 +927,11 @@ class nusoap_client extends nusoap_base  {
 		$curr_cookies = $this->cookies;
 		$this->cookies = array();
 		foreach ($curr_cookies as $cookie) {
-			if (! is_array($cookie)) {
+			if (!is_array($cookie)) {
 				$this->debug('Remove cookie that is not an array');
 				continue;
 			}
-			if ((isset($cookie['expires'])) && (! empty($cookie['expires']))) {
+			if ((isset($cookie['expires'])) && (!empty($cookie['expires']))) {
 				if (strtotime($cookie['expires']) > time()) {
 					$this->cookies[] = $cookie;
 				} else {
@@ -911,7 +941,7 @@ class nusoap_client extends nusoap_base  {
 				$this->cookies[] = $cookie;
 			}
 		}
-		$this->debug('checkCookie: '.sizeof($this->cookies).' cookies left in array');
+		$this->debug('checkCookie: ' . sizeof($this->cookies) . ' cookies left in array');
 		return true;
 	}
 
@@ -922,7 +952,8 @@ class nusoap_client extends nusoap_base  {
 	 * @return	boolean always return true
 	 * @access	private
 	 */
-	function UpdateCookies($cookies) {
+	function UpdateCookies($cookies)
+	{
 		if (sizeof($this->cookies) == 0) {
 			// no existing cookies: take whatever is new
 			if (sizeof($cookies) > 0) {
@@ -972,7 +1003,7 @@ class nusoap_client extends nusoap_base  {
 				$this->debug('Update cookie ' . $newName . '=' . $newCookie['value']);
 				break;
 			}
-			if (! $found) {
+			if (!$found) {
 				$this->debug('Add cookie ' . $newName . '=' . $newCookie['value']);
 				$this->cookies[] = $newCookie;
 			}
@@ -985,7 +1016,7 @@ if (!extension_loaded('soap')) {
 	/**
 	 *	For backwards compatiblity, define soapclient unless the PHP SOAP extension is loaded.
 	 */
-	class soapclient extends nusoap_client {
+	class soapclient extends nusoap_client
+	{
 	}
 }
-?>
