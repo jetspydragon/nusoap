@@ -99,11 +99,9 @@ class nusoap_parser extends nusoap_base
 			//xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
 			xml_parser_set_option($this->parser, XML_OPTION_CASE_FOLDING, 0);
 			xml_parser_set_option($this->parser, XML_OPTION_TARGET_ENCODING, $this->xml_encoding);
-			// Set the object for the parser.
-			xml_set_object($this->parser, $this);
 			// Set the element handlers for the parser.
-			xml_set_element_handler($this->parser, 'start_element', 'end_element');
-			xml_set_character_data_handler($this->parser, 'character_data');
+			xml_set_element_handler($this->parser, [$this, 'start_element'], [$this, 'end_element']);
+			xml_set_character_data_handler($this->parser, [$this, 'character_data']);
 
 			// Parse the XML file.
 			if (!xml_parse($this->parser, $xml, true)) {

@@ -264,11 +264,9 @@ class wsdl extends nusoap_base
 		// Set the options for parsing the XML data.
 		// xml_parser_set_option($parser, XML_OPTION_SKIP_WHITE, 1);
 		xml_parser_set_option($this->parser, XML_OPTION_CASE_FOLDING, 0);
-		// Set the object for the parser.
-		xml_set_object($this->parser, $this);
 		// Set the element handlers for the parser.
-		xml_set_element_handler($this->parser, 'start_element', 'end_element');
-		xml_set_character_data_handler($this->parser, 'character_data');
+		xml_set_element_handler($this->parser, [$this, 'start_element'], [$this, 'end_element']);
+		xml_set_character_data_handler($this->parser, [$this, 'character_data']);
 		// Parse the XML file.
 		if (!xml_parse($this->parser, $wsdl_string, true)) {
 			// Display an error message.
