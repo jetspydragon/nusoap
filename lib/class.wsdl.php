@@ -284,7 +284,7 @@ class wsdl extends nusoap_base
 			return false;
 		}
 		// free the parser
-		xml_parser_free($this->parser);
+		if (PHP_VERSION_ID < 80000) { xml_parser_free($this->parser); } $this->parser = null;
 		$this->debug('Parsing WSDL done');
 		// catch wsdl parse errors
 		if ($this->getError()) {

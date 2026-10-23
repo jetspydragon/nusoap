@@ -147,7 +147,7 @@ class nusoap_xmlschema extends nusoap_base
 				$this->setError($errstr);
 			}
 
-			xml_parser_free($this->parser);
+			if (PHP_VERSION_ID < 80000) { xml_parser_free($this->parser); } $this->parser = null;
 		} else {
 			$this->debug('no xml passed to parseString()!!');
 			$this->setError('no xml passed to parseString()!!');
